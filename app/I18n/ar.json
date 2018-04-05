@@ -214,7 +214,8 @@
         "pleaseselectitems":"الرجاء أختيار منتج",
         "removeitem":"تم الحذف من سلة المشتريات",
         "somethingwentswrong":"حصل خطأ ما",
-        "cartUpdate":"Cart update successfully"
+        "cartUpdate":"Cart update successfully",
+        "shipingchage": "Shipping Charges"
     },
     "profile":{
         "profiletitle":"الملف الشخصي",

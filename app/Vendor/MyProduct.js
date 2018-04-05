@@ -44,14 +44,14 @@ class MyProduct extends Component {
         this.setState({
             dataSource: this.props.dataSource,
             productnames:this.props.productnames,
-            isLoading : this.props.status
+            isLoading : this.props.isLoading
         });
     }
     componentWillReceiveProps(nextProps) {
         this.setState({
             dataSource: nextProps.dataSource,
             productnames:nextProps.productnames,
-            isLoading : nextProps.status
+            isLoading : nextProps.isLoading
         });
     }
     componentWillMount() {

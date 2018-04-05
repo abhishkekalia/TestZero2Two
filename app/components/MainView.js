@@ -477,21 +477,21 @@ class MainView extends Component {
         }
         let side = lang === "ar" ? "right" : "left";
         return (
-            <Drawer
-                ref={(ref) => this._drawer = ref}
-                type="overlay"
-                content={<Menu closeDrawer={()=> this.closeControlPanel()} />}
-                tapToClose={true}
-                openDrawerOffset={0.2}
-                panCloseMask={0.2}
-                closedDrawerOffset={0}
-                styles={drawerStyles}
-                tweenHandler={(ratio) => ({
-                    main: { opacity:(2-ratio)/2 }
-                })}
-                side= {side}
-                >
-            <View style={{backgroundColor: '#f9f9f9'}}>
+            <View style={{ flex: 1, backgroundColor: '#f9f9f9'}}>
+                <Drawer
+                    ref={(ref) => this._drawer = ref}
+                    type="overlay"
+                    content={<Menu closeDrawer={()=> this.closeControlPanel()} />}
+                    tapToClose={true}
+                    openDrawerOffset={0.2}
+                    panCloseMask={0.2}
+                    closedDrawerOffset={0}
+                    styles={drawerStyles}
+                    tweenHandler={(ratio) => ({
+                        main: { opacity:(2-ratio)/2 }
+                    })}
+                    side= {side}
+                    >
                 <View style={{height: Platform.OS === 'ios' ? 60 : 54,alignItems: 'center', backgroundColor: "#a9d5d1", justifyContent: 'space-between', flexDirection: lang === "ar" ? "row-reverse" : "row"}}>
                     {this._renderLeftButton()}
                     <Image source={require('../images/login_img.png')} style={{height: 25, width: '20%', alignSelf: 'center', marginTop:Platform.OS === 'ios' ? 10 : 0}}
@@ -514,8 +514,8 @@ class MainView extends Component {
                     {this.renderAllServiceViews()}
                 </ScrollView>
                 {this.renderShareSheet()}
+            </Drawer>
             </View>
-        </Drawer>
         );
     }
     renderShareSheet() {
@@ -1251,7 +1251,10 @@ var styles = StyleSheet.create({
 });
 const drawerStyles = {
   drawer: { backgroundColor:'#fff', shadowColor: '#000000', shadowOpacity: 0.8, shadowRadius: 3},
-  main: {paddingLeft: 0, backgroundColor:'#fff'},
+  main: {
+      // paddingLeft: 3,
+      backgroundColor:'transparent'
+  },
 }
 
 const TWITTER_ICON = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABvFBMVEUAAAAA//8AnuwAnOsAneoAm+oAm+oAm+oAm+oAm+kAnuwAmf8An+0AqtUAku0AnesAm+oAm+oAnesAqv8An+oAnuoAneoAnOkAmOoAm+oAm+oAn98AnOoAm+oAm+oAmuoAm+oAmekAnOsAm+sAmeYAnusAm+oAnOoAme0AnOoAnesAp+0Av/8Am+oAm+sAmuoAn+oAm+oAnOoAgP8Am+sAm+oAmuoAm+oAmusAmucAnOwAm+oAmusAm+oAm+oAm+kAmusAougAnOsAmukAn+wAm+sAnesAmeoAnekAmewAm+oAnOkAl+cAm+oAm+oAmukAn+sAmukAn+0Am+oAmOoAmesAm+oAm+oAm+kAme4AmesAm+oAjuMAmusAmuwAm+kAm+oAmuoAsesAm+0Am+oAneoAm+wAmusAm+oAm+oAm+gAnewAm+oAle0Am+oAm+oAmeYAmeoAmukAoOcAmuoAm+oAm+wAmuoAneoAnOkAgP8Am+oAm+oAn+8An+wAmusAnuwAs+YAmegAm+oAm+oAm+oAmuwAm+oAm+kAnesAmuoAmukAm+sAnukAnusAm+oAmuoAnOsAmukAqv9m+G5fAAAAlHRSTlMAAUSj3/v625IuNwVVBg6Z//J1Axhft5ol9ZEIrP7P8eIjZJcKdOU+RoO0HQTjtblK3VUCM/dg/a8rXesm9vSkTAtnaJ/gom5GKGNdINz4U1hRRdc+gPDm+R5L0wnQnUXzVg04uoVSW6HuIZGFHd7WFDxHK7P8eIbFsQRhrhBQtJAKN0prnKLvjBowjn8igenQfkQGdD8A7wAAAXRJREFUSMdjYBgFo2AUDCXAyMTMwsrGzsEJ5nBx41HKw4smwMfPKgAGgkLCIqJi4nj0SkhKoRotLSMAA7Jy8gIKing0KwkIKKsgC6gKIAM1dREN3Jo1gSq0tBF8HV1kvax6+moG+DULGBoZw/gmAqjA1Ay/s4HA3MISyrdC1WtthC9ebGwhquzsHRxBfCdUzc74Y9UFrtDVzd3D0wtVszd+zT6+KKr9UDX749UbEBgULIAbhODVHCoQFo5bb0QkXs1RAvhAtDFezTGx+DTHEchD8Ql4NCcSyoGJYTj1siQRzL/JKeY4NKcSzvxp6RmSWPVmZhHWnI3L1TlEFDu5edj15hcQU2gVqmHTa1pEXJFXXFKKqbmM2ALTuLC8Ak1vZRXRxa1xtS6q3ppaYrXG1NWjai1taCRCG6dJU3NLqy+ak10DGImx07LNFCOk2js6iXVyVzcLai7s6SWlbnIs6rOIbi8ViOifIDNx0uTRynoUjIIRAgALIFStaR5YjgAAAABJRU5ErkJggg==";
