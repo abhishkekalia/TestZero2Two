@@ -41,6 +41,7 @@ class Shopingcart extends Component {
         this.fetchData = this.fetchData.bind(this);
         this.state = {
             dataSource: new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2}),
+            arr_Item: [],
             ShopingItems : null,
             SetToList : null,
             itemcount : '',
@@ -55,7 +56,9 @@ class Shopingcart extends Component {
             // country : null,
             status : false,
             cartIdList:[],
-            nologin: false
+            nologin: false,
+            order_detail: {},
+            fleetCompanydetail : []
         };
     }
     componentDidMount(){
@@ -66,7 +69,8 @@ class Shopingcart extends Component {
         });
         EventEmitter.removeAllListeners("redirectToFaturah");
         EventEmitter.on("redirectToFaturah", (value)=>{
-            routes.myfaturah({ uri : value.uri, order_id : value.order_id, callback: this.callBackFitura, cartIdList:this.state.cartIdList})
+            this.saveOrderDetails(value);
+            // routes.myfaturah({ uri : value.uri, order_id : value.order_id, callback: this.callBackFitura, cartIdList:this.state.cartIdList})
         });
     }
     callBackFitura() {
@@ -74,6 +78,79 @@ class Shopingcart extends Component {
     }
     componentWillMount() {
         routes.refresh({ left: this._renderLeftButton, right: this._renderRightButton,});
+    }
+    saveOrderDetails(value){
+        // console.log("myfaturah respo", value);
+        const { arr_Item }= this.state;
+        var today = new Date();
+        var nextDay = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
+        currentdate= today.getFullYear() +'-'+ parseInt(today.getMonth()+1) + '-'+ today.getDate() + ' '+  today.toLocaleTimeString() ;
+        nextdate= nextDay.getFullYear() +'-'+ parseInt(nextDay.getMonth()+1) + '-'+ nextDay.getDate() ;
+
+        let email_id = "zeroTotwo@gmail.com",
+        product_name = arr_Item[0].product_name,
+        // product_name = "ashvin test dfddfdf",
+        product_size = arr_Item[0].size,
+        // product_size = "Small",
+        tempreture = "Cold",
+        extra_handling_request = "Heavy",
+        charges = "2000",
+        pickUp_area = "29 Khalid Ibn Al Waleed St, Kuwait City, Kuwait",
+        pickUp_latitude = "22.966425",
+        pickUp_longitude = "72.615933",
+        delivery_date = nextdate,
+        delivery_time = "12:30:32",
+        dropOff_latitude = "23.215635",
+        dropOff_longitude = "72.636941",
+        dropOff_area = "29 Khalid Ibn Al Waleed St, Kuwait City, Kuwait",
+        dropOff_city = "Bayan",
+        pickUp_city = "Bidea";
+        // console.log("product_name",arr_Item[0].product_name);
+        // console.log("product_size",arr_Item[0].size);
+        // console.log("nextdate",nextdate);
+        api.saveOrderDetails(email_id, product_name, product_size, tempreture, extra_handling_request,
+            charges, pickUp_area, pickUp_latitude, pickUp_longitude, delivery_date, delivery_time,
+            dropOff_latitude, dropOff_longitude, dropOff_area, dropOff_city, pickUp_city)
+        .then((responseData)=> {
+            console.log("saveOrderDetails respo", responseData);
+            if(responseData.response.status === "200"){
+                AsyncStorage.setItem('order_detail', JSON.stringify(responseData.response.data));
+                this.setState({
+                    order_detail : responseData.response.data,
+                });
+                let order_id = responseData.response.data.order_id;
+                console.log("order_id", order_id);
+                this.fleetCompanyFilter(order_id)
+
+            }
+        })
+        .catch((error) => {
+            console.warn("hello", error);
+            console.log(error);
+        })
+        .done();
+    }
+    fleetCompanyFilter(order_id){
+        let pickUp_latitude = "22.966425",
+        pickUp_longitude = "72.615933",
+        min_price = "0",
+        max_price = "5000";
+
+        api.fleetCompanyFilter(order_id, pickUp_latitude, pickUp_longitude, min_price, max_price)
+        .then((responseData)=> {
+            if(responseData.response.status === "200"){
+                AsyncStorage.setItem('fleetCompanydetail', JSON.stringify(responseData.response.data));
+                this.setState({
+                    fleetCompanydetail : responseData.response.data,
+                });
+                console.log("fleetCompanydetail", responseData);
+
+            }
+        })
+        .catch((error) => {
+            console.log(error);
+        })
+        .done();
     }
     _renderLeftButton = () => {
          return(
@@ -85,50 +162,6 @@ class Shopingcart extends Component {
             <Text style={{color : '#fff'}}></Text>
         );
     };
-    // async getKey() {
-    //     try {
-    //         const value = await AsyncStorage.getItem('data');
-    //         var response = JSON.parse(value);
-    //         this.setState({
-    //             u_id: response.userdetail.u_id ,
-    //             country: response.userdetail.country ,
-    //             user_type: response.userdetail.user_type
-    //         });
-    //     } catch (error) {
-    //         console.log("Error retrieving data" + error);
-    //     }
-    // }
-
-    // addtoWishlist(product_id){
-    //     const {u_id, country, user_type } = this.state;
-    //     let formData = new FormData();
-    //     formData.append('u_id', String(u_id));
-    //     formData.append('country', String(country));
-    //     formData.append('product_id', String(product_id));
-    //     const config = {
-    //             method: 'POST',
-    //             headers: {
-    //                 'Accept': 'application/json',
-    //                 'Content-Type': 'multipart/form-data;',
-    //             },
-    //             body: formData,
-    //         }
-    //     fetch(Utils.gurl('addToWishlist'), config)
-    //     .then((response) => response.json())
-    //     .then((responseData) => {
-    //         MessageBarManager.showAlert({
-    //             message: responseData.data.message,
-    //             alertType: 'alert',
-    //             stylesheetWarning : { backgroundColor : '#ff9c00', strokeColor : '#fff' },
-    //             animationType: 'SlideFromLeft',
-    //             title:''
-    //         })
-    //     })
-    //     .catch((error) => {
-    //       console.log(error);
-    //     })
-    //     .done();
-    // }
     fetchData(){
         const {u_id, country, lang ,deviceId } = this.props;
         // deviceId = "fc898d3fb74399eb";
@@ -177,6 +210,7 @@ class Shopingcart extends Component {
             if(responseData.status){
                 this.setState({
                     dataSource: this.state.dataSource.cloneWithRows(responseData.data),
+                    arr_Item : responseData.data,
                     ShopingItems : Select,
                     SetToList : responseData.data,
                     itemcount : responseData.itemcount,
@@ -324,7 +358,7 @@ class Shopingcart extends Component {
         this._drawer.open()
     };
     render() {
-        const { itemcount, totalamount, subtotalamount } = this.state;
+        const { itemcount, totalamount, subtotalamount , fleetCompanydetail} = this.state;
         const { lang } = this.props;
         let side = lang === "ar" ? "right" : "left";
         let listView = (<View></View>);
