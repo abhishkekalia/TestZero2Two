@@ -170,12 +170,13 @@ var api = {
         }
         return fetch(Utils.murl('getFleetCompanyDetail'), config).then((res) => res.json())
     },
-    conformOrder(order_id, price, u_id, fleetCompanyId){
+    conformOrder(order_id, price, u_id, fleetCompanyId, user_wise_product_id){
         let formData = new FormData();
         formData.append('order_id', String(order_id));
         formData.append('price', String(price));
         formData.append('u_id', String(u_id));
         formData.append('fleetCompanyId', String(fleetCompanyId));
+        formData.append('user_wise_product_id', String(user_wise_product_id));
         const config = {
             method: 'POST',
             headers: {

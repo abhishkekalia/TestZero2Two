@@ -14,6 +14,9 @@ import {
     Picker,
     Platform,
 } from 'react-native';
+import MapView from 'react-native-maps';
+import MapViewDirections from 'react-native-maps-directions';
+
 import Utils from 'app/common/Utils';
 import {connect} from 'react-redux';
 import I18n from 'react-native-i18n'
@@ -30,9 +33,15 @@ import EventEmitter from "react-native-eventemitter";
 import Drawer from 'react-native-drawer';
 import Menu from '../menu/MenuContainer';
 import api from "app/Api/api";
-
+import Modal from 'react-native-modal';
+import Tracking from '../Tracking.js'
 const { width, height } = Dimensions.get('window');
-// const SHORT_LIST = ['Small', 'Medium', 'Large'];
+const ASPECT_RATIO = width / height;
+const LATITUDE = 22.966425;
+const LONGITUDE = 72.615933;
+const LATITUDE_DELTA = 0.0922;
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
+const GOOGLE_MAPS_APIKEY = 'AIzaSyAnZx1Y6CCB6MHO4YC_p04VkWCNjqOrqH8';
 
 class Shopingcart extends Component {
     constructor(props) {
@@ -40,7 +49,9 @@ class Shopingcart extends Component {
         // this.getKey = this.getKey.bind(this);
         this.fetchData = this.fetchData.bind(this);
         this.state = {
-            dataSource: new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2}),
+            dataSource : new ListView.DataSource({rowHasChanged: (r1, r2) => r1 !== r2}),
+            dataSource2 : new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 }),
+            orderHistory_list : new ListView.DataSource({ rowHasChanged: (r1, r2) => r1 !== r2 }),
             arr_Item: [],
             ShopingItems : null,
             SetToList : null,
@@ -58,11 +69,43 @@ class Shopingcart extends Component {
             cartIdList:[],
             nologin: false,
             order_detail: {},
-            fleetCompanydetail : []
-        };
+            fleetCompanyList: [],
+            showFleetCompanydetail : false,
+            showOrderHistry : false,
+            ShowMapTracking : false,
+            coordinates: [
+              {
+                latitude: 22.966425,
+                longitude: 72.615933,
+              },
+              {
+                latitude: 22.996170,
+                longitude: 72.599584,
+              },
+              {
+                 latitude: 23.036734,
+                 longitude: 72.516371,
+               },
+               {
+                  latitude: 23.012777,
+                  longitude: 72.506084,
+                },
+            ],
+        }
+        this.mapView = null;
     }
+    onMapPress = (e) => {
+      this.setState({
+        coordinates: [
+          ...this.state.coordinates,
+          e.nativeEvent.coordinate,
+        ],
+      });
+    }
+
     componentDidMount(){
         this.fetchData()
+        this.orderHistory()
         EventEmitter.removeAllListeners("reloadCartlist");
         EventEmitter.on("reloadCartlist", (value)=>{
             this.fetchData()
@@ -79,6 +122,31 @@ class Shopingcart extends Component {
     componentWillMount() {
         routes.refresh({ left: this._renderLeftButton, right: this._renderRightButton,});
     }
+    getProductTreckingLatitudeLongitude(order_id){
+        let is_all = "1"
+        api.getProductTreckingLatitudeLongitude(order_id, is_all)
+        .then((responseData) => {
+            var arrCoor = responseData.response.data
+            var arrcoorNew = []
+            for (i = 0; i < arrCoor.length; i++) {
+                var dict = {}
+                dict.latitude = parseFloat(arrCoor[i].latitude)
+                dict.longitude = parseFloat(arrCoor[i].longitude)
+                arrcoorNew.push(dict)
+            }
+            // console.log("arrcoorNew:",arrcoorNew);
+            this.setState({
+                coordinates : arrcoorNew,
+                ShowMapTracking: true,
+                refreshing: false
+            });
+        })
+        .catch((error) => {
+            console.log(error);
+        })
+        .done();
+    }
+
     saveOrderDetails(value){
         // console.log("myfaturah respo", value);
         const { arr_Item }= this.state;
@@ -141,10 +209,11 @@ class Shopingcart extends Component {
             if(responseData.response.status === "200"){
                 AsyncStorage.setItem('fleetCompanydetail', JSON.stringify(responseData.response.data));
                 this.setState({
-                    fleetCompanydetail : responseData.response.data,
+                    dataSource2 : this.state.dataSource2.cloneWithRows(responseData.response.data),
+                    fleetCompanyList : responseData.response.data,
+                    showFleetCompanydetail : true,
                 });
-                console.log("fleetCompanydetail", responseData);
-
+                // console.log("fleetCompanydetail", responseData);
             }
         })
         .catch((error) => {
@@ -295,7 +364,9 @@ class Shopingcart extends Component {
                         flex : 0}
                     }>
                     <Text style={{ textAlign: align}}>{I18n.t('cart.items', { locale: lang })}({itemcount})</Text>
-                    {/*<Text style={{textAlign: align}}> KWD {totalamount}</Text>*/}
+                <Text style={{textAlign: align}} onPress={()=> this.setState({
+                        showOrderHistry : true
+                    })}> Show Order History</Text>
                 </View>
                 <View style={{
                         flexDirection : direction,
@@ -358,7 +429,7 @@ class Shopingcart extends Component {
         this._drawer.open()
     };
     render() {
-        const { itemcount, totalamount, subtotalamount , fleetCompanydetail} = this.state;
+        const { itemcount, totalamount, subtotalamount} = this.state;
         const { lang } = this.props;
         let side = lang === "ar" ? "right" : "left";
         let listView = (<View></View>);
@@ -371,6 +442,29 @@ class Shopingcart extends Component {
                 automaticallyAdjustContentInsets={false}
                 showsVerticalScrollIndicator={false}
                 />
+            );
+
+            let fleetlistView = (<View></View>);
+            fleetlistView = (
+                <ListView
+                    contentContainerStyle={styles.container}
+                    dataSource={this.state.dataSource2}
+                    renderRow={this.renderfleet.bind(this)}
+                    enableEmptySections={true}
+                    automaticallyAdjustContentInsets={false}
+                    showsVerticalScrollIndicator={false}
+                    />
+            );
+            let orderHistory_listView = (<View></View>);
+            orderHistory_listView = (
+                <ListView
+                    contentContainerStyle={styles.container}
+                    dataSource={this.state.orderHistory_list}
+                    renderRow={this.renderOrderHistry.bind(this)}
+                    enableEmptySections={true}
+                    automaticallyAdjustContentInsets={false}
+                    showsVerticalScrollIndicator={false}
+                    />
             );
 
         if (!this.state.status) {
@@ -414,9 +508,169 @@ class Shopingcart extends Component {
                             </TouchableHighlight>
                         </View>
                 </Drawer>
-        </View>
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    isVisible={this.state.showFleetCompanydetail}
+                    onRequestClose={() => this.setState({ showFleetCompanydetail :false})}>
+                    <View style={{
+                            // flex: 1,
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: "transparent"}
+                        }>
+                            {fleetlistView}
+                    </View>
+                </Modal>
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    isVisible={this.state.showOrderHistry}
+                    onRequestClose={() => this.setState({ showOrderHistry :false})}>
+                    <View style={{
+                            // flex: 1,
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            backgroundColor: "transparent"}
+                        }>
+                            {orderHistory_listView}
+                            <Text style={{ height: 20, width: 100, textAlign: 'center'}} onPress={()=>this.setState({
+                                showOrderHistry : false
+                                })
+                            }>Close</Text>
+                    </View>
+
+                </Modal>
+                <Modal
+                    animationType="slide"
+                    transparent={false}
+                    isVisible={this.state.ShowMapTracking}
+                    onRequestClose={() => this.setState({ ShowMapTracking :false})}>
+                    <View style={{ position: 'absolute', zIndex: 1,backgroundColor: "transparent", justifyContent: 'center', height: 30, width: "90%", alignSelf: 'center', marginTop: 10}}>
+                        <Icon onPress ={()=>this.setState({ ShowMapTracking :false})} name="close" size={25} color="#fff" style={ lang === 'ar'?{alignSelf: 'flex-start'} :{alignSelf: 'flex-end'}} on/>
+                    </View>
+                    <View style={{ flex : 1, justifyContent: 'center', zIndex: 0}}>
+                        <MapView
+                            initialRegion={{
+                                latitude: LATITUDE,
+                                longitude: LONGITUDE,
+                                latitudeDelta: LATITUDE_DELTA,
+                                longitudeDelta: LONGITUDE_DELTA,
+                            }}
+                            style={StyleSheet.absoluteFill}
+                            ref={c => this.mapView = c}
+                            onPress={this.onMapPress}
+                            >
+                            {this.state.coordinates.map((coordinate, index) =>
+                                <MapView.Marker key={`coordinate_${index}`} coordinate={coordinate} >
+                                    <FontAwesome name="car" size={15} color="#FFCC7D"/>
+                                </MapView.Marker>
+                            )}
+                            {(this.state.coordinates.length >= 2) && (
+                                <MapViewDirections
+                                    origin={this.state.coordinates[0]}
+                                    waypoints={ (this.state.coordinates.length > 2) ? this.state.coordinates.slice(1, -1): null}
+                                    destination={this.state.coordinates[this.state.coordinates.length-1]}
+                                    apikey={GOOGLE_MAPS_APIKEY}
+                                    strokeWidth={5}
+                                    strokeColor="#191970"
+                                    onStart={(params) => {
+                                        console.log(`Started routing between "${params.origin}" and "${params.destination}"`);
+                                    }}
+                                    onError={(errorMessage) => {
+                                        console.log('GOT AN ERROR');
+                                    }}
+                                    />
+                            )}
+                        </MapView>
+                    </View>
+                </Modal>
+            </View>
         );
     }
+    orderHistory(){
+        let email_id = "zeroTotwo@gmail.com";
+        api.orderHistory(email_id)
+        .then((responseData)=> {
+            console.log("orderHistory respo", responseData);
+            if(responseData.response.status === "200"){
+                this.setState({
+                    orderHistory_list : this.state.orderHistory_list.cloneWithRows(responseData.response.data),
+                });
+            }
+        })
+        .catch((error) => {
+            console.warn("hello", error);
+            console.log(error);
+        })
+        .done();
+
+    }
+    conformOrder(){
+        let order_id = this.state.order_detail.order_id,
+        price = this.state.fleetCompanyList[0].price,
+        u_id = this.state.order_detail.u_id,
+        fleetCompanyId = this.state.fleetCompanyList[0].fleetCompanyId,
+        user_wise_product_id = this.state.order_detail.user_wise_product_id ;
+
+        api.conformOrder(order_id, price, u_id, fleetCompanyId, user_wise_product_id)
+        .then((responseData)=> {
+            console.log("conformOrder respo", responseData);
+            if(responseData.response.status === "200"){
+                AsyncStorage.setItem('conformOrderDetail', JSON.stringify(responseData.response.data));
+                this.setState({
+                    conformOrderDetail : responseData.response.data,
+                    showFleetCompanydetail :false
+                });
+                this.orderHistory()
+                MessageBarManager.showAlert({
+                    message: responseData.response.data.message,
+                    title:'',
+                    alertType: 'extra',
+                    titleStyle: {color: 'white', fontSize: 18, fontWeight: 'bold' },
+                    messageStyle: { color: 'white', fontSize: 16 , textAlign: "left"},
+                })
+
+            }
+        })
+        .catch((error) => {
+            console.warn("hello", error);
+            console.log(error);
+        })
+        .done();
+    }
+    renderOrderHistry( data, rowData: string, sectionID: number, rowID: number, index) {
+        return (
+            <View style={{
+                    flexDirection: 'column',
+                    marginTop : 2,
+                    backgroundColor: "#fff",
+                    borderWidth : StyleSheet.hairlineWidth,
+                    borderColor : "#ccc",
+                    borderRadius : 5}
+                }>
+                <Text onPress={()=> this.getProductTreckingLatitudeLongitude(data.order_id)} style={{ fontSize:15, color:'#696969', marginBottom:5}}> {JSON.stringify(data)}</Text>
+                </View>
+        );
+    }
+        renderfleet( data, rowData: string, sectionID: number, rowID: number, index) {
+        console.log("data", data);
+        return (
+            <View style={{
+                    flexDirection: 'column',
+                    marginTop : 2,
+                    backgroundColor: "#fff",
+                    borderWidth : StyleSheet.hairlineWidth,
+                    borderColor : "#ccc",
+                    borderRadius : 5}
+                }>
+                <Text onPress={()=> this.conformOrder()} style={{ fontSize:15, color:'#696969', marginBottom:5}}> {JSON.stringify(data)}</Text>
+                </View>
+        );
+    }
+
     renderData( data, rowData: string, sectionID: number, rowID: number, index) {
         const { lang, country, u_id, deviceId } = this.props;
         let direction = (lang === 'ar') ? 'row-reverse' :'row',

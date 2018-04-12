@@ -84,7 +84,7 @@ class Marketingadd extends Component {
         this.setState({
             visibleModal : true
         })
-        RNFetchBlob.fetch('POST', Utils.gurl('addMarketingAd'),{
+        RNFetchBlob.config({timeout:15000}).fetch('POST', Utils.gurl('addMarketingAd'),{
             Authorization : "Bearer access-token",
             'Accept': 'application/json',
             'Content-Type': 'application/octet-stream',
